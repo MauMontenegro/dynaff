@@ -2,7 +2,7 @@ import argparse
 import sys
 from pathlib import Path
 import time as tm
-
+import warnings
 
 from solvers.utilities.utils import *
 
@@ -36,6 +36,7 @@ def argParser(args):
 def saveSolution(instance_path, instance, solution, saved, time, hash_calls, hash_size, solver_name):
     summary_name = solver_name + "_summary"
     output_path = instance_path / instance / summary_name
+    print(output_path)
     with open(output_path, "w") as writer:
         writer.write("Solution: {}\n".format(solution))
         writer.write("Saved: {}\n".format(saved))
@@ -56,22 +57,26 @@ def Statistics(path, total_saved, total_times):
     saved_mean = []
     saved_std_dv = []
 
-    for node_size in total_times:
-        m = np.mean(node_size)
-        std = np.std(node_size)
-        time_mean.append(m)
-        time_std_dv.append(std)
-    time_std_dv = np.asarray(time_std_dv)
-    time_mean = np.asarray(time_mean)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+        for node_size in total_times:
+            m = np.mean(node_size)
+            std = np.std(node_size)
+            time_mean.append(m)
+            time_std_dv.append(std)
+        time_std_dv = np.asarray(time_std_dv)
+        time_mean = np.asarray(time_mean)
 
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=RuntimeWarning)
     # Statistics for saved vertices
-    for node_size in total_saved:
-        m = np.mean(node_size)
-        std = np.std(node_size)
-        saved_mean.append(m)
-        saved_std_dv.append(std)
-    saved_std_dv = np.asarray(saved_std_dv)
-    saved_mean = np.asarray(saved_mean)
+        for node_size in total_saved:
+            m = np.mean(node_size)
+            std = np.std(node_size)
+            saved_mean.append(m)
+            saved_std_dv.append(std)
+        saved_std_dv = np.asarray(saved_std_dv)
+        saved_mean = np.asarray(saved_mean)
 
     print(saved_mean)
     print(saved_std_dv)
@@ -154,35 +159,28 @@ if __name__ == '__main__':
                 degrees_[element[0]] = element[1]
             nx.set_node_attributes(T, degrees_, "degrees")
 
-            # Marked nodes list to use in backtracking
+            # Marked Property for all nodes in T
             marked_list = [0] * T.number_of_nodes()
             nx.set_node_attributes(T, marked_list, "marked")
 
             # CALL THE SOLVER
             # ----------------------------------------------------------------------------------------------------------
-            tracing_start()  # Execution time
+            # Execution time
+            tracing_start()
             start = tm.time()
-            max_saved_trees, Sol = solver(agent_pos, all_nodes, time, time, 0, T_Ad_Sym, 0, T)  # Solver
+            # Solver
+            max_saved_trees, Sol = solver(agent_pos, all_nodes, time, time, 0, T_Ad_Sym, 0, T)
             end = tm.time()
             t = (end - start)
             print("time elapsed {} seconds".format(t))
             peak = tracing_mem()
             # -----------------------------------------------------------------------------------------------------------
 
-            # Just Printing Results
+            # Console Printing Results
             print("\nForest with:{n} nodes".format(n=len(all_nodes)))
             print("Max saved Trees:{t}".format(t=max_saved_trees))
-            # print("Hash Repeated Calls:{h}".format(h=Hash_Calls))
-            print("Hash Table has {l} different Forest Conditions".format(l=len(Sol)))
             # Retrieve Solution Strategy
-            if args.solver == "dpsolver_mau":  # Dynamic Programming
-                Sol = Find_Solution(F, time, agent_pos, Sol, T_Ad_Sym)
-                Sol.insert(0, str(N))
-                print("\nSolution Sequence: {s}".format(s=Sol))
-            if args.solver == "hd_heuristic" or args.solver == "ms_heuristic":  # Heuristics
-                print("\n Solution: {s}".format(s=Sol[0]))
-                print("\n Time elapsed by step: {s}".format(s=Sol[1]))
-                print("\n Fireline Level: {s}".format(s=Sol[2]))
+            print("\nSolution Sequence: {s}".format(s=Sol))
             Hash_Calls = 0
             # Saving stats for general parameters
             saveSolution(instance_path, inst, Sol, max_saved_trees, t, Hash_Calls, len(Sol), args.solver)

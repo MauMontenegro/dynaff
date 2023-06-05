@@ -138,6 +138,19 @@ def dpsolver(a_pos, nodes, F, time, max_budget, hash_calls, dist_matrix, recursi
             return saved, h, Hash
         return saved, h
 
+def savednodes(T, saved_node, valid_nodes):
+    saved = 0
+    # Immediate successors of protected node
+    successors = list(T.successors(int(saved_node)))
+    # Traverse successors
+    for i in successors:
+        if T.nodes[i]["marked"] != 1:   # If marked, then it was saved before
+            saved += 1
+            successors.extend(list(T.successors(int(i)))) # Evaluate next successors
+        if i in valid_nodes:
+            valid_nodes.pop(i)
+    valid_nodes.pop(saved_node)
+    return saved + 1
 
 def hd_heuristic(a_pos, nodes, time, max_budget, hash_calls, config, recursion, T):
     """Heuristic that saves feasible nodes with maximum degree
@@ -163,20 +176,16 @@ def hd_heuristic(a_pos, nodes, time, max_budget, hash_calls, config, recursion, 
         len_valid = len(Valid)
         if len_valid > 0:
             # For valid Nodes Get Max Degree Value with his Key
-            max_degree = max(int(d['degree']) for d in Valid.values())
+            #max_degree = max(int(d['degree']) for d in Valid.values())
             max_degree_node = max(Valid, key=lambda v: Valid[v]['degree'])
             solution.append(max_degree_node)
 
-            # Remove node from actual Valid List
-            Valid.pop(max_degree_node)
-
             # Compute Saved Nodes and detach max degree node
-            saved += utils.SavedNodes(F, max_degree_node, Valid)
+            saved += savednodes(T, max_degree_node, Valid)
 
             # New Nodes on next iteration will Be Valid This in this
             nodes.clear()
             nodes = Valid.copy()
-
             # Compute Remaining Time if agent travel to this Valid node
             # Compute Remaining Time if agent travel to this Valid node
             elapsed_time = utils.ComputeTime(a_pos, max_degree_node, config)
@@ -184,16 +193,12 @@ def hd_heuristic(a_pos, nodes, time, max_budget, hash_calls, config, recursion, 
             fireline_level = (max_budget - time) / 2
             fireline.append(fireline_level)
             time_travel.append(elapsed_time)
-
-            # New agent position moves to node position
-            if config[0] == "caenv":
-                x = max_degree_node.split("-")
-                a_pos[0] = int(x[0])
-                a_pos[1] = int(x[1])
-            if config[0] == "rndtree":
-                a_pos = max_degree_node
-
-    return saved, 0, [solution, time_travel, fireline]
+            a_pos = max_degree_node
+            for i in list(Valid):
+                if not Feasible(str(i), a_pos, time, T.nodes[i]["levels"], max_budget, config):
+                    Valid.pop(i)
+            T.nodes[int(max_degree_node)]["marked"] = 1
+    return saved, solution
 
 
 def ms_heuristic(a_pos, nodes, time, max_budget, hash, config, recursion, T):
@@ -207,15 +212,15 @@ def ms_heuristic(a_pos, nodes, time, max_budget, hash, config, recursion, T):
     Valid = {}  # Valid Nodes
 
     # Compute subtree length for each node
-    utils.Compute_Total_Saved(nodes, T)
+    utils.computeChildren(nodes, T)
 
     # Compute initial feasible nodes
     for node in nodes:
-        if Feasible(node, a_pos, time, nodes[node]['level'], max_budget, config):
+        if Feasible(node, a_pos, time, T.nodes[node]["levels"], max_budget, config):
             Valid[node] = {}
-            Valid[node]['level'] = nodes[node]['level']
-            Valid[node]['degree'] = nodes[node]['degree']
-            Valid[node]['saved'] = nodes[node]['saved']
+            Valid[node]['level'] = T.nodes[node]["levels"]
+            Valid[node]['degree'] = T.nodes[node]["degrees"]
+            Valid[node]['saved'] = T.nodes[node]["saved"]
 
     # While there exists valid nodes to protect
     while Valid:
@@ -223,10 +228,9 @@ def ms_heuristic(a_pos, nodes, time, max_budget, hash, config, recursion, T):
         max_saved = max(int(d['saved']) for d in Valid.values())
         max_saved_node = max(Valid, key=lambda v: Valid[v]['saved'])
         solution.append(max_saved_node)
-        Valid.pop(max_saved_node)  # Remove node from actual Valid List
         saved += max_saved
         # Remove child nodes from valid list
-        utils.Detach_Node_List(max_saved_node, Valid, T)
+        s = savednodes(T, max_saved_node, Valid)
         # Compute Remaining Time if agent travel to this Valid node
         elapsed_time = utils.ComputeTime(a_pos, max_saved_node, config)
         time -= elapsed_time
@@ -236,50 +240,42 @@ def ms_heuristic(a_pos, nodes, time, max_budget, hash, config, recursion, T):
         a_pos = max_saved_node
         # Update Feasible Nodes
         for i in list(Valid):
-            if not Feasible(str(i), a_pos, time, nodes[str(i)]['level'], max_budget, config):
+            if not Feasible(str(i), a_pos, time, T.nodes[i]["levels"], max_budget, config):
                 Valid.pop(i)
+        T.nodes[int(max_saved_node)]["marked"] = 1
     return saved, [solution, time_travel, fireline]
-
-
-def backtrackSaved(T, saved_node, valid_nodes):
-    saved = 0
-    successors = list(T.successors(int(saved_node)))  # Immediate child nodes for saved node
-    for i in successors:  # Traverse successors
-        if T.nodes[i]["marked"] != 1:
-            saved += 1
-            successors.extend(list(T.successors(int(i))))
-            if str(i) in valid_nodes:
-                valid_nodes.pop(str(i))
-    valid_nodes.pop(saved_node)
-    return saved + 1
 
 
 def backtrackSolver(a_pos, nodes, time, max_budget, h, dist_matrix, recursion, T):
     Sequence = []
     Valid = {}
-    # Select Feasible nodes
+    # Feasible nodes
     for node in nodes:
         if Feasible(node, a_pos, time, T.nodes[int(node)]["levels"], max_budget, dist_matrix):
             Valid[node] = {}
             Valid[node]['level'] = T.nodes[node]["levels"]
     max_saved = 0
     defended = -1
-
+    # Progress Bar
     pbar = 0
     if recursion == 0:
         pbar = tqdm(total=len(Valid))
 
-    # Check all feasible nodes
+    # Select feasible node and apply next recursion
     for valid_node in Valid:
         if recursion == 0:
             pbar.update(1)
         Valid_copy = Valid.copy()
-        saved = backtrackSaved(T, valid_node, Valid_copy)  # Return saved nodes
-        t_ = time - utils.ComputeTime(a_pos, valid_node, dist_matrix)
-        T.nodes[int(valid_node)]["marked"] = 1
+        saved = savednodes(T, valid_node, Valid_copy)               # Return saved nodes and prune Tree
+        t_ = time - utils.ComputeTime(a_pos, valid_node, dist_matrix)   # Remaining time
+
+        # Recursion
+        T.nodes[int(valid_node)]["marked"] = 1 # Mark node to not count as saved in next recursions.
         saved_, Sequence_ = backtrackSolver(valid_node, Valid_copy, t_, max_budget, h, dist_matrix, recursion + 1, T)
         T.nodes[int(valid_node)]["marked"] = 0
         saved += saved_
+
+        # Select shorter sequence
         if max_saved < saved or (max_saved == saved and len(Sequence_) < len(Sequence)):
             max_saved = saved
             defended = valid_node

@@ -100,7 +100,9 @@ def loadmfpt(path, directory):
     for node in T.nodes:
         mapping[node] = int(node)
     T = nx.relabel_nodes(T, mapping)
-    T_Ad_Sym = np.load(path / directory / "FDM_MFFP.npy")       # Distance Matrix
+    arrays = np.load(path / directory / "FDM_MFFP.npz")
+    T_Ad_Sym = arrays['arr_0']
+    weights = arrays['arr_1']
     lay = open(path / directory / "layout_MFF.json")
     pos = {}
     pos_ = json.load(lay)                                       # layout of Tree
@@ -207,3 +209,17 @@ def Find_Solution(Forest, Time, a_pos, Hash, dist_matrix):
         total_budget = Time
         key = Forest.write(format=8) + ';' + str(Time) + ';' + str(a_pos)
     return Solution
+
+def computeChildren(all_nodes, T):
+    """
+    Compute subtree length of each protected node
+    :param all_nodes: List of all nodes in T
+    :param T: Networkx Tree structure
+    :return:
+    """
+    children_ = {}
+    for node in all_nodes:
+        saved = 1 + len(list(nx.descendants(T, int(node))))
+        children_[node] = saved
+    nx.set_node_attributes(T, children_, "saved")
+
