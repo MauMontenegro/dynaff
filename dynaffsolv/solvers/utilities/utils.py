@@ -4,7 +4,7 @@ import tracemalloc
 import numpy as np
 import matplotlib.pyplot as plt
 import networkx as nx
-
+from ete3 import Tree
 
 class ExperimentLog:
     def __init__(self, path, file_name):

@@ -7,8 +7,6 @@ import warnings
 from solvers.utilities.utils import *
 
 
-# TODO : Make multiple specific utils modules (metrics, tree manipulation, solver specific operations)
-
 def argParser(args):
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -45,7 +43,7 @@ def saveSolution(instance_path, instance, solution, saved, time, hash_calls, has
         writer.write("Hash Size: {}\n".format(hash_size))
 
 
-def Statistics(path, total_saved, total_times):
+def Statistics(path, total_saved, total_times,solver):
     """
     :param path: Path to save statistics for experiment
     :param total_saved: Total saved nodes array for each instance
@@ -80,13 +78,13 @@ def Statistics(path, total_saved, total_times):
 
     print(saved_mean)
     print(saved_std_dv)
-
-    np.save(path / "Statistics_DP", np.array([saved_mean, saved_std_dv, time_mean, time_std_dv]))
+    np.save(path / solver, np.array([saved_mean, saved_std_dv, time_mean, time_std_dv]))
     y = np.arange(0, len(time_mean), 1, dtype=int)
     fig, ax = plt.subplots(1)
     ax.plot(y, saved_mean, label="Mean saved Vertices", color="blue")
     ax.fill_between(y, saved_mean + saved_std_dv / 2, saved_mean - saved_std_dv / 2, facecolor="blue", alpha=0.5)
-    plt.savefig(path / 'DP_Saved.png')
+    string = solver + '.png'
+    plt.savefig(path / string )
 
     fig, ax = plt.subplots(1)
     ax.plot(y, time_mean, label="Mean Time Vertices", color="red")
@@ -189,4 +187,4 @@ if __name__ == '__main__':
             t_p_nodes.append(t)
         total_times.append(t_p_nodes)
         total_saved.append(saved_p_nodes)
-    Statistics(path, total_saved, total_times)
+    Statistics(path, total_saved, total_times,args.solver)
