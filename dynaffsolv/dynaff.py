@@ -161,13 +161,18 @@ if __name__ == '__main__':
             marked_list = [0] * T.number_of_nodes()
             nx.set_node_attributes(T, marked_list, "marked")
 
+            if args.solver== "dpsolver":
+                ntree = newicktree(T,starting_fire)
+            else:
+                ntree=0
+
             # CALL THE SOLVER
             # ----------------------------------------------------------------------------------------------------------
             # Execution time
             tracing_start()
             start = tm.time()
             # Solver
-            max_saved_trees, Sol = solver(agent_pos, all_nodes, time, time, 0, T_Ad_Sym, 0, T)
+            max_saved_trees, Sol = solver(agent_pos, all_nodes, time, time, 0, T_Ad_Sym, 0, T, ntree)
             end = tm.time()
             t = (end - start)
             print("time elapsed {} seconds".format(t))
@@ -177,9 +182,18 @@ if __name__ == '__main__':
             # Console Printing Results
             print("\nForest with:{n} nodes".format(n=len(all_nodes)))
             print("Max saved Trees:{t}".format(t=max_saved_trees))
-            # Retrieve Solution Strategy
-            print("\nSolution Sequence: {s}".format(s=Sol))
+
             Hash_Calls = 0
+            # Retrieve Solution Strategy
+            if args.solver== "dpsolver":
+                solution = Find_Solution(ntree, time, agent_pos, Sol[1], T_Ad_Sym)
+                print("\nHash calls:{n}".format(n=Sol[0]))
+                print("\nHash size:{n}".format(n=len(Sol[1])))
+                print("\nSolution Sequence:{n}".format(n=solution))
+                Hash_Calls = Sol[0]
+            else:
+                print("\nSolution Sequence: {s}".format(s=Sol))
+
             # Saving stats for general parameters
             saveSolution(instance_path, inst, Sol, max_saved_trees, t, Hash_Calls, len(Sol), args.solver)
             # Saved nodes per Graph

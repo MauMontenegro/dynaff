@@ -32,11 +32,11 @@ def Feasible(node_pos, a_pos, time, level, max_budget, config):
         return False
 
 
-# Global Hash and Grid
+# Global Hash dictionary
 Hash = {}
 
 
-def dpsolver(a_pos, nodes, F, time, max_budget, hash_calls, dist_matrix, recursion):
+def dpsolver(a_pos, nodes, time, max_budget, hash_calls, dist_matrix, recursion,T,F):
     """ Wise-Recursive Dynamic Programming Solver for Moving Firefighter Problem
 
     Recursive Dynamic Programming function. It takes a Forest in ete3 form and construct a key with the state of the
@@ -78,10 +78,9 @@ def dpsolver(a_pos, nodes, F, time, max_budget, hash_calls, dist_matrix, recursi
 
     # Compute Feasible Nodes in actual Forest and add to Valid Node Dictionary
     Valid = {}
-    for node in nodes:
-        if Feasible(node, a_pos, time, nodes[node]['level'], max_budget, dist_matrix):
-            Valid[node] = {}
-            Valid[node]['level'] = nodes[node]['level']
+    for node_ in nodes:
+        if Feasible(node_, a_pos, time, T.nodes[node_]["levels"], max_budget, dist_matrix):
+            Valid[node_] = {}
 
     saved = 0
     pbar = 0
@@ -90,6 +89,7 @@ def dpsolver(a_pos, nodes, F, time, max_budget, hash_calls, dist_matrix, recursi
     if recursion == 0:
         pbar = tqdm(total=len(Valid))
 
+    #print(Valid)
     # Traverse Valid node list and compute his value by recurrence
     for valid_node in Valid:
         if recursion == 0:
@@ -116,7 +116,7 @@ def dpsolver(a_pos, nodes, F, time, max_budget, hash_calls, dist_matrix, recursi
         n_x = valid_node
 
         # Solve next sub-problem
-        value, h = dpsolver(n_x, Valid_copy, F_copy, t_, max_budget, h, dist_matrix, recursion + 1)
+        value, h = dpsolver(n_x, Valid_copy, t_, max_budget, h, dist_matrix, recursion + 1,T,F_copy)
 
         # Assign Valid Node value by his returning best value + is current saved trees
         Valid[valid_node]['value'] = value + saved
@@ -129,13 +129,13 @@ def dpsolver(a_pos, nodes, F, time, max_budget, hash_calls, dist_matrix, recursi
         Hash[key]['max_node'] = max_key_node
         Hash[key]['value'] = max_value
         if recursion == 0:  # We already do all the recursions
-            return max_value, h, Hash
+            return max_value, [h,Hash]
         return max_value, h
     # If there are no valid nodes for current key then only return saved trees
     else:
         Hash[key]['value'] = saved
         if recursion == 0:
-            return saved, h, Hash
+            return saved, [h, Hash]
         return saved, h
 
 def savednodes(T, saved_node, valid_nodes):
@@ -152,7 +152,7 @@ def savednodes(T, saved_node, valid_nodes):
     valid_nodes.pop(saved_node)
     return saved + 1
 
-def hd_heuristic(a_pos, nodes, time, max_budget, hash_calls, config, recursion, T):
+def hd_heuristic(a_pos, nodes, time, max_budget, hash_calls, config, recursion, T,F):
     """Heuristic that saves feasible nodes with maximum degree
     """
     # Control Variables
@@ -201,7 +201,7 @@ def hd_heuristic(a_pos, nodes, time, max_budget, hash_calls, config, recursion, 
     return saved, solution
 
 
-def ms_heuristic(a_pos, nodes, time, max_budget, hash, config, recursion, T):
+def ms_heuristic(a_pos, nodes, time, max_budget, hash, config, recursion, T,F):
     """Heuristic that saves nodes with maximum children
     """
     # Control Variables
@@ -246,7 +246,7 @@ def ms_heuristic(a_pos, nodes, time, max_budget, hash, config, recursion, T):
     return saved, [solution, time_travel, fireline]
 
 
-def backtrackSolver(a_pos, nodes, time, max_budget, h, dist_matrix, recursion, T):
+def backtrackSolver(a_pos, nodes, time, max_budget, h, dist_matrix, recursion, T,F):
     Sequence = []
     Valid = {}
     # Feasible nodes
@@ -271,7 +271,7 @@ def backtrackSolver(a_pos, nodes, time, max_budget, h, dist_matrix, recursion, T
 
         # Recursion
         T.nodes[int(valid_node)]["marked"] = 1 # Mark node to not count as saved in next recursions.
-        saved_, Sequence_ = backtrackSolver(valid_node, Valid_copy, t_, max_budget, h, dist_matrix, recursion + 1, T)
+        saved_, Sequence_ = backtrackSolver(valid_node, Valid_copy, t_, max_budget, h, dist_matrix, recursion + 1, T,F)
         T.nodes[int(valid_node)]["marked"] = 0
         saved += saved_
 
