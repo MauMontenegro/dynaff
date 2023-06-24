@@ -3,7 +3,6 @@ import sys
 from pathlib import Path
 import time as tm
 import warnings
-
 from solvers.utilities.utils import *
 
 
@@ -102,7 +101,11 @@ def setupSolver(solver):
 
 
 if __name__ == '__main__':
-    # Get input arguments and handle missing values
+
+    total_times = []
+    total_saved = []
+    size_dirs = []
+
     args = argParser(sys.argv[:])
     if args.solver is None:
         raise argparse.ArgumentTypeError('No solver selected')
@@ -111,23 +114,16 @@ if __name__ == '__main__':
     if args.input is None:
         raise argparse.ArgumentTypeError('No input selected')
 
-    # Experiment Path
-    path = Path.cwd() / "Experiments" / str(args.experiment)
-
-    # Set up a solver
+    experiment_path = Path.cwd() / "Experiments" / str(args.experiment)
     solver = setupSolver(args.solver)
 
-    total_times = []
-    total_saved = []
-    size_dirs = []
-
-    for d in next(os.walk(path)):
+    for d in next(os.walk(experiment_path)):
         size_dirs.append(d)
     size_dirs = sorted(size_dirs[1])
 
     # Traverse for each Tree Size experiments
     for dir in size_dirs:
-        instance_path = path / str(dir)
+        instance_path = experiment_path / str(dir)
         inst_dirs = []
         for i in next(os.walk(instance_path)):
             inst_dirs.append(i)
@@ -137,10 +133,11 @@ if __name__ == '__main__':
 
         # Traverse for each Instance
         for inst in inst_dirs:
-            print("\n\n>>>>>>Compute solution for {n}, {i} <<<<<<<<".format(n=dir, i=inst))
+            print("\n\n>>>>>>Compute solution for Tree {i} of {n} <<<<<<<<".format(n=dir, i=inst))
+
             # Load Instance
             T, N, starting_fire, T_Ad_Sym, seed, scale, agent_pos, max_degree, root_degree, time = \
-                loadmfpt(instance_path, str(inst))
+                loadmfpt(instance_path / str(inst))
 
             # Get all available nodes
             all_nodes = dict.fromkeys(T.nodes)
@@ -161,18 +158,19 @@ if __name__ == '__main__':
             marked_list = [0] * T.number_of_nodes()
             nx.set_node_attributes(T, marked_list, "marked")
 
-            if args.solver== "dpsolver":
-                ntree = newicktree(T,starting_fire)
+            # Create Newick Tree for Dynamic Programming Solver
+            if args.solver == "dpsolver":
+                ntree = newicktree(T, starting_fire)
             else:
-                ntree=0
+                ntree = 0
 
             # CALL THE SOLVER
             # ----------------------------------------------------------------------------------------------------------
-            # Execution time
             tracing_start()
             start = tm.time()
-            # Solver
+
             max_saved_trees, Sol = solver(agent_pos, all_nodes, time, time, 0, T_Ad_Sym, 0, T, ntree)
+
             end = tm.time()
             t = (end - start)
             print("time elapsed {} seconds".format(t))
@@ -185,8 +183,8 @@ if __name__ == '__main__':
 
             Hash_Calls = 0
             # Retrieve Solution Strategy
-            if args.solver== "dpsolver":
-                solution = Find_Solution(ntree, time, agent_pos, Sol[1], T_Ad_Sym)
+            if args.solver == "dpsolver":
+                solution = Find_DP_Solution(ntree, time, agent_pos, Sol[1], T_Ad_Sym)
                 print("\nHash calls:{n}".format(n=Sol[0]))
                 print("\nHash size:{n}".format(n=len(Sol[1])))
                 print("\nSolution Sequence:{n}".format(n=solution))
@@ -196,9 +194,10 @@ if __name__ == '__main__':
 
             # Saving stats for general parameters
             saveSolution(instance_path, inst, Sol, max_saved_trees, t, Hash_Calls, len(Sol), args.solver)
+            
             # Saved nodes per Graph
             saved_p_nodes.append(max_saved_trees)
             t_p_nodes.append(t)
         total_times.append(t_p_nodes)
         total_saved.append(saved_p_nodes)
-    Statistics(path, total_saved, total_times,args.solver)
+    Statistics(experiment_path, total_saved, total_times, args.solver)

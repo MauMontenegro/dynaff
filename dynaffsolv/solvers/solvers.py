@@ -1,7 +1,6 @@
 from .utilities import utils
 from tqdm import tqdm
 
-
 def Feasible(node_pos, a_pos, time, level, max_budget, config):
     """Function that decides if node is Feasible by comparing agent travel time to a node and fire travel time
      to same node
@@ -31,10 +30,8 @@ def Feasible(node_pos, a_pos, time, level, max_budget, config):
     else:
         return False
 
-
 # Global Hash dictionary
 Hash = {}
-
 
 def dpsolver(a_pos, nodes, time, max_budget, hash_calls, dist_matrix, recursion,T,F):
     """ Wise-Recursive Dynamic Programming Solver for Moving Firefighter Problem
