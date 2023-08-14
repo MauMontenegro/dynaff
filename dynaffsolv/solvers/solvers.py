@@ -58,7 +58,7 @@ def dpsolver(a_pos, nodes, time, max_budget, hash_calls, dist_matrix, recursion,
         Hash Table
     """
     h = hash_calls
-    # Base Conditions of recursion (Tree is empty or time is over)
+    # Base Conditions (Tree is empty or time is over)
     if (F.is_leaf() == True) or (time <= 0):
         return 0, h
 
@@ -95,7 +95,7 @@ def dpsolver(a_pos, nodes, time, max_budget, hash_calls, dist_matrix, recursion,
         # Copy of Tree and Valid list to send in following recurrence
         F_copy = F.copy("newick")
 
-        # In metric distance envs like "caenv", only send to the following recurrence a copy of 'Valid'
+        # In metric distance envs like "caenv", only end to the following recurrence a copy of 'Valid'
         # cause once a node is invalid due delta_time from agent position it never will be valid again.
         # When there are no metric distance envs, like "rndtree", we send all nodes in actual forest (except pruned)
         Valid_copy = Valid.copy()
@@ -125,8 +125,10 @@ def dpsolver(a_pos, nodes, time, max_budget, hash_calls, dist_matrix, recursion,
         max_key_node = max(Valid, key=lambda v: Valid[v]['value'])
         Hash[key]['max_node'] = max_key_node
         Hash[key]['value'] = max_value
-        if recursion == 0:  # We already do all the recursions
+        # We already do all the recursions
+        if recursion == 0:
             return max_value, [h,Hash]
+        # There are recursions to solve
         return max_value, h
     # If there are no valid nodes for current key then only return saved trees
     else:

@@ -80,15 +80,27 @@ def Statistics(path, total_saved, total_times,solver):
     np.save(path / solver, np.array([saved_mean, saved_std_dv, time_mean, time_std_dv]))
     y = np.arange(0, len(time_mean), 1, dtype=int)
     fig, ax = plt.subplots(1)
-    ax.plot(y, saved_mean, label="Mean saved Vertices", color="blue")
+    ax.plot(y, saved_mean, label="Mean Saved Vertices", color="blue")
+    fig.suptitle('Mean Saved Vertices by DP')
+    ax.set_xlabel('Tree Size')
+    ax.set_ylabel('Saved Vertices')
+    plt.grid()
+    labels = ['10', '20', '30', '40','50']
+    plt.xticks(np.arange(len(labels)), labels, rotation='vertical')
     ax.fill_between(y, saved_mean + saved_std_dv / 2, saved_mean - saved_std_dv / 2, facecolor="blue", alpha=0.5)
     string = solver + '.png'
-    plt.savefig(path / string )
+    plt.savefig(path / string)
 
     fig, ax = plt.subplots(1)
-    ax.plot(y, time_mean, label="Mean Time Vertices", color="red")
+    ax.plot(y, time_mean, label="Average Solving Time (sec) by DP", color="red")
+    fig.suptitle('Average Solving Time (sec) by DP')
+    ax.set_xlabel('Tree Size')
+    ax.set_ylabel('Time (seconds)')
+    plt.grid()
+    labels = ['10', '20', '30', '40','50']
+    plt.xticks(np.arange(len(labels)), labels, rotation='vertical')
     ax.fill_between(y, time_mean + time_std_dv / 2, time_mean - time_std_dv / 2, facecolor="red", alpha=0.5)
-    plt.savefig(path / 'DP_Time.png')
+    plt.savefig(path / 'DP_time.png')
 
 def setupSolver(solver):
     import solvers.solvers as solvers
@@ -169,7 +181,7 @@ if __name__ == '__main__':
             tracing_start()
             start = tm.time()
 
-            max_saved_trees, Sol = solver(agent_pos, all_nodes, time, time, 0, T_Ad_Sym, 0, T, ntree)
+            max_saved_trees, S = solver(agent_pos, all_nodes, time, time, 0, T_Ad_Sym, 0, T, ntree)
 
             end = tm.time()
             t = (end - start)
@@ -184,16 +196,15 @@ if __name__ == '__main__':
             Hash_Calls = 0
             # Retrieve Solution Strategy
             if args.solver == "dpsolver":
-                solution = Find_DP_Solution(ntree, time, agent_pos, Sol[1], T_Ad_Sym)
-                print("\nHash calls:{n}".format(n=Sol[0]))
-                print("\nHash size:{n}".format(n=len(Sol[1])))
+                solution = Find_DP_Solution(ntree, time, agent_pos, S[1], T_Ad_Sym)
+                print("\nHash calls:{n}".format(n=S[0]))
+                print("\nHash size:{n}".format(n=len(S[1])))
                 print("\nSolution Sequence:{n}".format(n=solution))
-                Hash_Calls = Sol[0]
+                Hash_Calls = S[0]
+                saveSolution(instance_path, inst, solution, max_saved_trees, t, Hash_Calls, len(S), args.solver)
             else:
-                print("\nSolution Sequence: {s}".format(s=Sol))
-
-            # Saving stats for general parameters
-            saveSolution(instance_path, inst, Sol, max_saved_trees, t, Hash_Calls, len(Sol), args.solver)
+                print("\nSolution Sequence: {s}".format(s=S))
+                saveSolution(instance_path, inst, S, max_saved_trees, t, Hash_Calls, len(S), args.solver)
             
             # Saved nodes per Graph
             saved_p_nodes.append(max_saved_trees)
